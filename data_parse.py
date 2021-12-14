@@ -1,5 +1,5 @@
 """
-Data PArser for Deep Molecule Generator
+Data Parser for Deep Molecule Generator
 
 author: ilayda beyreli kokundu, mustafa duymus
 date 03/11/2021
@@ -9,6 +9,9 @@ import os, sys
 import pickle
 import numpy as np
 import pandas as pd
+
+import networkx as nx
+import pysmiles as ps
 
 RAW_FILE_DIF = "E:\\BILKENT_CS\\CS585"
 
@@ -51,13 +54,19 @@ target = raw_file.values[:,-1]
 
 # Find the maximum possible number of each atom in the entire set
 counts = dict()
-for molecule in input:
-    counts = molecule_counter(molecule, counts)
+#for molecule in input:
+#    counts = molecule_counter(molecule, counts)
+#
+#with open("counts.pkl", "wb") as fout:
+#    pickle. dump(counts, fout)
 
-with open("counts.pkl", "wb") as fout:
-    pickle. dump(counts, fout)
-    
+counts = pickle.load("counts.pkl")
+
 n = max(counts.values())
-data = np.zeros((target.shape[0],n,n))
-
+features = np.zeros((target.shape[0], len(counts.keys())))
+data = []
+for (i, smiles) in enumerate(target):
+    molecule = ps.read_smiles(smiles, explicit_hydrogen=True)
+    A = nx.adjacency_matrix(molecule).todense()
+    print(A)
 
