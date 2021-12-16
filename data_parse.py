@@ -13,7 +13,8 @@ import pandas as pd
 import networkx as nx
 import pysmiles as ps
 
-RAW_FILE_DIF = "E:\\BILKENT_CS\\CS585"
+#RAW_FILE_DIF = "E:\\BILKENT_CS\\CS585" # Windows
+RAW_FILE_DIF = "\mnt\molgen_data" # Neo - Ubuntu
 
 def molecule_counter(s, d=None):
     if d is None: d=dict()
