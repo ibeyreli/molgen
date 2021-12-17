@@ -25,6 +25,10 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score, accuracy_score
 
+from pysmiles import write_smiles
+import logging
+logging.getLogger('pysmiles').setLevel(logging.CRITICAL)  # Anything higher than warning
+
 DATA_FILE = "/mnt/ilayda/mogen_data"
 system_gpu_mask = "0"
 batch_size = 64
@@ -68,7 +72,7 @@ class Molecules(Dataset):
     def __getitem__(self, i):
         return self.__data[i,:], self.__features[i,:]
 
-
+"""
 def sample_image(n_row, batches_done):
     """Saves a grid of generated digits ranging from 0 to n_classes"""
     # Sample noise
@@ -76,9 +80,9 @@ def sample_image(n_row, batches_done):
     # Get labels ranging from 0 to n_classes for n rows
     labels = np.array([num for _ in range(n_row) for num in range(n_row)])
     labels = Variable(LongTensor(labels))
-    gen_imgs = generator(z, labels)
-    save_image(gen_imgs.data, "images/%d.png" % batches_done, nrow=n_row, normalize=True)
-
+    gen_imgs = generator(z, labels
+    (gen_imgs.data, "images/%d.png" % batches_done, nrow=n_row, normalize=True)
+"""
 
 files = os.listdir(DATA_FILE)
 files.delete("features.npy")
@@ -98,6 +102,9 @@ test_loader = Dataloader(test_set, batch_size=batch_size, shuffle=False)
 # -----------------------------------------------
 # Model Setup
 # -----------------------------------------------
+def freeze_layer(layer):
+    for param in layer.parameters():
+        param.requires_grad = False
 
 generator = Generator().to(device)
 discriminator = Dscriminator().to(device)
@@ -257,7 +264,7 @@ for epoch in range(max_epoch):
 
         batches_done = epoch * len(dataloader) + i
         if batches_done % 100 == 0:
-            sample_image(n_row=10, batches_done=batches_done)
+            # sample_image(n_row=10, batches_done=batches_done)
             torch.save(generator.state_dict(), "generator_checkpoint"+str(batches_done)+".pth")    
             torch.save(discriminator.state_dict(), "discriminator_checkpoint"+str(batches_done)+".pth")    
 
