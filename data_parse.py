@@ -13,6 +13,13 @@ import pandas as pd
 import networkx as nx
 import pysmiles as ps
 
+import logging
+logging.getLogger('pysmiles').setLevel(logging.CRITICAL) 
+
+import warnings
+warnings.filterwarnings("ignore")
+
+
 #RAW_FILE_DIF = "E:\\BILKENT_CS\\CS585" # Windows
 RAW_FILE_DIF = "/mnt/ilayda/molgen_data" # Neo - Ubuntu
 
@@ -57,7 +64,7 @@ input = raw_file.values[:,-2]
 target = raw_file.values[:,-1]
 # TARGET : (2105464,) ['CCC(=O)O[C@H]1[C@H](C)O[C@@H](O[C@@H]2[C@@H](C)C(=O)O[C@H](C)[C@H](C)[C@H](OC(=O)CC)[C@@H](C)C(=O)[C@]3(CO3)C[C@H](C)[C@H](O[C@@H]3O[C@H](C)C[C@H](N(C)C)[C@H]3O)[C@H]2C)C[C@@H]1OC'
 #                      'COc1ccc(Cl)cc1-c1cc(Nc2ccc(Cl)cc2)nc(N)n1']
-print("TARGET:", target.shape)
+# print("TARGET:", target.shape)
 # Find the maximum possible number of each atom in the entire set
 
 counts = dict()
@@ -80,23 +87,59 @@ with open("counts.json", "r") as fin:
 with open("indices.json", "r") as fin:
     l = json.load(fin)
 
-print("Data set of ", len(l), "molecules")
+# print("Data set of ", len(l), "molecules")
+# print("Dictionary", counts)
+order = np.array( [ [key, int(counts[key]) ] for key in list(counts.keys()) ], dtype=object )
+# print("The Order!", order[0:2,1].astype(int))
 
+# Drop problematic samples
 input = input[l]
 target = target[l]
 
+fout = open("data_parse_log.txt", "w")
+
 n = sum(counts.values())
 features = np.zeros((target.shape[0], len(counts.keys())))
-data = []
+
+badlines = []
+k = 0
 for (i, smiles) in enumerate(target):
-    print(i, smiles)
-    molecule = ps.read_smiles(smiles, explicit_hydrogen=True)
-    A = nx.adjacency_matrix(molecule).todense()
-    print(A, molecule.nodes(data='element'))
+    try:
+        molecule = ps.read_smiles(smiles, explicit_hydrogen=True)
+    except:
+        fout.write("Error at line: %d \n" % i)
+        # data.append(np.zeros((n, n)))
+        badlines.append(i)
+        l.pop(i)
+        continue
+    A = nx.adjacency_matrix(molecule).todense().astype(np.uint8)
+    #print("A and Nodes \n", A, molecule.nodes(data='element'))
     atoms, _ = molecule_counter(input[i])
+    # get a new matrix to fill
+    Aprime = np.zeros((n, n), dtype=np.uint8)    
     for key in atoms.keys():
         j = list(counts.keys()).index(key)
+        # set the feature
         features[i,j] = atoms[key]
+        # find the start index 
+        start = sum(order[:j,1].copy().astype(int))
+        # print("Debugging here!", key,j,start)
+        nodes = [ind for (ind,element) in enumerate(molecule.nodes(data='element')) if element[-1] == key ]
+        nodes2 = [ind+start for (ind,element) in enumerate(molecule.nodes(data='element')) if element[-1] == key ]
+        # print(len(nodes))
+        Aprime[nodes2, nodes2] = A[nodes,nodes].copy()
+    np.save(os.path.join(RAW_FILE_DIF,"adjacency_"+str(k)+".npy"), Aprime)
+    k += 1
+    if i % 1000 == 0: print("At line:", i)
 
+# Not used due to memory issues!
+# data = np.delete(np.array(data), badlines, axis=0)
+# np.save(os.path.join(RAW_FILE_DIF,"data.npy"), data, allow_pickle=True)
 
+features = np.delete(np.array(features), badlines, axis=0)
+np.save(os.path.join(RAW_FILE_DIF,"features.npy"), features, allow_pickle=True)
 
+print("Final shape", data.shape, features.shape)
+
+with open("indices.json", "w") as fout:
+    json.dump(l, fout)
