@@ -4,7 +4,6 @@ Deep Molecule Generator
 author: ilayda beyreli kokundu
 date 03/11/2021
 """
-import argparse
 import os
 import math
 
@@ -72,17 +71,7 @@ class Molecules(Dataset):
     def __getitem__(self, i):
         return self.__data[i,:], self.__features[i,:]
 
-"""
-def sample_image(n_row, batches_done):
-    """Saves a grid of generated digits ranging from 0 to n_classes"""
-    # Sample noise
-    z = Variable(FloatTensor(np.random.normal(0, 1, (n_row ** 2, latent_dim))))
-    # Get labels ranging from 0 to n_classes for n rows
-    labels = np.array([num for _ in range(n_row) for num in range(n_row)])
-    labels = Variable(LongTensor(labels))
-    gen_imgs = generator(z, labels
-    (gen_imgs.data, "images/%d.png" % batches_done, nrow=n_row, normalize=True)
-"""
+
 
 files = os.listdir(DATA_FILE)
 files.delete("features.npy")
@@ -119,15 +108,19 @@ LongTensor = torch.cuda.LongTensor if torch.cuda.is_avaliable() else torch.LongT
 # -----------------------------------------------
 # Training
 # -----------------------------------------------
-val_d_loss = 0
-val_g_loss = 0
+val_d_loss = []
+val_g_loss = []
+
+train_d_loss = []
+train_g_loss = []
 
 d_early_stop = 7
 g_early_stop = 7
 
 for epoch in range(max_epoch):
     for batch-idx, (molecules, feats) in enumerate(traiin_loader):
-
+        batch_d_loss = []
+        batch_g_loss = []
         molecules, feats = molecules.to(device), feats.to(device)
         
         # Adversarial ground truths
@@ -154,7 +147,7 @@ for epoch in range(max_epoch):
         # Loss measures generator's ability to fool the discriminator
         validity = discriminator(gen_imgs, gen_labels)
         g_loss = F.MSEloss(validity, valid)
-
+        batch_g_loss.append(g_loss.item())
         g_loss.backward()
         optimizer_G.step()
 
@@ -174,7 +167,7 @@ for epoch in range(max_epoch):
 
         # Total discriminator loss
         d_loss = (d_real_loss + d_fake_loss) / 2
-
+        batch_d_loss.append(d_loss.item())
         d_loss.backward()
         optimizer_D.step()
 
@@ -183,6 +176,8 @@ for epoch in range(max_epoch):
             "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
             % (epoch, max_epoch, i, len(dataloader), d_loss.item(), g_loss.item())
         )
+    train_d_loss.append(np.mean(batch_d_loss))
+    train_g_loss.append(np.mean(batch_g_loss))
     #--------------------
     # Validation
     #--------------------
@@ -235,17 +230,17 @@ for epoch in range(max_epoch):
             # Total discriminator loss
             d_loss = (d_real_loss + d_fake_loss) / 2
 
-        if np.mean(d_losses) > val_d_loss:
+        if np.mean(d_losses) > val_d_loss[-1]:
             d_early_stop -= 1
         else:
             d_early_stop = 7
-        val_d_loss = np.mean(d_losses)
+        val_d_loss.append(np.mean(d_losses))
 
-        if np.mean(g_losses) > val_g_loss:
+        if np.mean(g_losses) > val_g_loss[-1]:
             g_early_stop -= 1
         else:
             g_early_stop = 7
-        val_g_loss = np.mean(g_losses)
+        val_g_loss.append(np.mean(g_losses))
 
         if d_early_stop == 0 and g_early_stop == 0:
              discriminator.apply(freeze_layer)
@@ -268,3 +263,23 @@ for epoch in range(max_epoch):
             torch.save(generator.state_dict(), "generator_checkpoint"+str(batches_done)+".pth")    
             torch.save(discriminator.state_dict(), "discriminator_checkpoint"+str(batches_done)+".pth")    
 
+fout = open("runreport.txt", "w+")
+fout.write("Train Losses: Generative \n")
+
+for l in train_g_loss:
+    fout.write("%f\n" % l)
+    
+fout.write("Train Losses: Discriminative \n")
+for l in train_d_loss:
+    fout.write("%f\n" % l)
+
+fout.write("Validation Losses: Generative \n")
+for l in val_g_loss:
+    fout.write("%f\n" % l)
+    
+fout.write("Validation Losses: Discriminative \n")
+for l in val_d_loss:
+    fout.write("%f\n" % l)
+
+fout.close()
+plot_learing_curve(train_g_loss, train_d_loss, val_g_loss, val_d_loss)

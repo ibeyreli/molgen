@@ -4,24 +4,22 @@ Utiliy Functions for Deep Molecule Generator
 author: ilayda beyreli kokundu
 date 03/11/2021
 """
-import numpy as np
 import os
 import math
 
-from torch.utils.data import DataLoader
-from torch.autograd import Variable
-
 import pdb
 import time
-import torch
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
+from torch.utils.data import Dataset, DataLoader
+
 import numpy as np
 import networkx as nx
-
 import matplotlib.pyplot as plt
-from torch.utils.data import Dataset, DataLoader
+
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score, accuracy_score
 
