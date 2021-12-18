@@ -13,7 +13,7 @@ import pandas as pd
 import networkx as nx
 import pysmiles as ps
 
-RAW_FILE_DIF = "E:\\BILKENT_CS\\CS585"
+RAW_FILE_DIF = "D:\\BILKENT_CS\\CS585\\"
 
 def molecule_counter(s, d=None):
     if d is None: d=dict()
@@ -54,13 +54,13 @@ target = raw_file.values[:,-1]
 
 # Find the maximum possible number of each atom in the entire set
 counts = dict()
-#for molecule in input:
-#    counts = molecule_counter(molecule, counts)
-#
-#with open("counts.pkl", "wb") as fout:
-#    pickle. dump(counts, fout)
+for molecule in input:
+    counts = molecule_counter(molecule, counts)
 
-counts = pickle.load("counts.pkl")
+with open("counts.pkl", "wb") as fout:
+    pickle. dump(counts, fout)
+
+#counts = pickle.load("counts.pkl")
 
 n = max(counts.values())
 features = np.zeros((target.shape[0], len(counts.keys())))
