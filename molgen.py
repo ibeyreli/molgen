@@ -1,3 +1,10 @@
+"""
+Model Classes for Deep Molecule Generator
+
+author: ilayda beyreli kokundu
+date 03/11/2021
+"""
+
 import torch
 import numpy as np
 import torch.nn as nn
