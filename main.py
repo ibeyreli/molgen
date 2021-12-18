@@ -28,6 +28,9 @@ from pysmiles import write_smiles
 import logging
 logging.getLogger('pysmiles').setLevel(logging.CRITICAL)  # Anything higher than warning
 
+from utils import *
+from molgen import *
+
 DATA_FILE = "/mnt/ilayda/mogen_data"
 system_gpu_mask = "0"
 batch_size = 64
@@ -265,18 +268,17 @@ for epoch in range(max_epoch):
 
 fout = open("runreport.txt", "w+")
 fout.write("Train Losses: Generative \n")
-
 for l in train_g_loss:
     fout.write("%f\n" % l)
-    
+ fout.write( "-"*20+"\n\n")   
 fout.write("Train Losses: Discriminative \n")
 for l in train_d_loss:
     fout.write("%f\n" % l)
-
+fout.write( "-"*20+"\n\n")
 fout.write("Validation Losses: Generative \n")
 for l in val_g_loss:
     fout.write("%f\n" % l)
-    
+fout.write( "-"*20+"\n\n")
 fout.write("Validation Losses: Discriminative \n")
 for l in val_d_loss:
     fout.write("%f\n" % l)

@@ -39,8 +39,17 @@ def sample_molecule(n_row, batches_done):
     save_sample(gen_imgs.data, "molecules/%d.png" % batches_done, nrow=n_row, normalize=True)
 
 def plot_learing_curve(tgl, tdl, vgl, vdl):
-    fig=plt.figure(figsize=(16,24))
+    fig, ax = plt.subplots(figsize=(16, 20))
     
-
-
+    ax.plot(tgl,  color='green', label='Train Generator')
+    ax.plot(tgd,  color='red', label='Train Discriminator')
+    ax.plot(vgl,  color='blue', label='Validation Generator')
+    ax.plot(vgd,  color='orange'", label='Validation Discriminator')
+    
+    ax.set_title("Learning Curve")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Loss")
+    
+    plt.legend()
+    fig.savefig("between_scaled.png")
 
