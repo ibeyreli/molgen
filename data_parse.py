@@ -72,7 +72,7 @@ target = raw_file.values[:,-1]
 # Find the maximum possible number of each atom in the entire set
 
 counts = dict()
-<<<<<<< HEAD
+
 for molecule in input:
     counts = molecule_counter(molecule, counts)
 

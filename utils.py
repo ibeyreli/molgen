@@ -53,3 +53,28 @@ def plot_learing_curve(tgl, tdl, vgl, vdl):
     plt.legend()
     fig.savefig("between_scaled.png")
 
+def generate_reference(file_name="counts.json"):
+    with open(file_name, "r") as fin:
+        counts = json.load(fin)
+    n = sum(counts.values())
+    ref_vec = np.zeros((n,1))# .fill(0)
+    i = 0
+    for key in count.keys():
+        if key == 'C':
+            ref_vec[i:counts[key]] = 0.25
+        if key == 'H':
+            ref_vec[i:counts[key]] = 1.0
+        if key == '0':
+            ref_vec[i:counts[key]] = 0.50
+        if key == 'N':
+            ref_vec[i:counts[key]] = 0.33
+        i += counts[key]
+    return ref_vec
+
+def symmetry_loss(output): # custom loss function
+    loss = output - torch.transpose(output, 0, 1) #beware of dim0 and dim1
+    return loss
+    
+def bond_loss(output, ref_vector):
+    loss = torch.sum( torch.mul( torch.sum(output, 1), ref_vector) )
+    return loss

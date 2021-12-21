@@ -91,6 +91,8 @@ test_set = Molecules(x_test, f_test)
 train_loader = Dataloader(train_set, batch_size=batch_size, shuffle=True)
 test_loader = Dataloader(test_set, batch_size=batch_size, shuffle=False)
 
+ref_vec = generate_reference()
+f_size = features.shape[1]
 # -----------------------------------------------
 # Model Setup
 # -----------------------------------------------
@@ -124,7 +126,7 @@ for epoch in range(max_epoch):
     for batch-idx, (molecules, feats) in enumerate(traiin_loader):
         batch_d_loss = []
         batch_g_loss = []
-        molecules, feats = molecules.to(device), feats.to(device)
+        molecules, feats = torch.from_numpy(molecules).to(device), torch.from_numpy(feats).to(device)
         
         # Adversarial ground truths
         valid = Variable(FloatTensor(batch_size, 1).fill_(1.0), requires_grad=False)
@@ -150,6 +152,12 @@ for epoch in range(max_epoch):
         # Loss measures generator's ability to fool the discriminator
         validity = discriminator(gen_imgs, gen_labels)
         g_loss = F.MSEloss(validity, valid)
+        
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TO DO:
+        # Check if the martix is symmetric A-A^t
+        # Then get row sum, and multiply with ref vector
+        
+        
         batch_g_loss.append(g_loss.item())
         g_loss.backward()
         optimizer_G.step()
@@ -208,11 +216,15 @@ for epoch in range(max_epoch):
 
             # Sample noise and labels as generator input
             z = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, latent_dim))))
-            gen_labels = Variable(LongTensor(np.random.randint(0, n_classes, batch_size)))
+            gen_labels = Variable(LongTensor(np.random.randint(0, f_size, batch_size)))
 
             # Generate a batch of images
             gen_imgs = generator(z, gen_labels)
-
+            
+            # Loss measures generator's ability to generate meaningful molecules
+            sym_loss = symmetry_loss(gen_imgs)
+            b_loss = bond_loss(gen_imgs, ref_vec)
+            
             # Loss measures generator's ability to fool the discriminator
             validity = discriminator(gen_imgs, gen_labels)
             g_loss = F.MSEloss(validity, valid)

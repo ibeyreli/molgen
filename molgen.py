@@ -49,13 +49,12 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, latent_dim=128, input_size=(1,128,128), feature_size=100, out_size=2 ):
+    def __init__(self, latent_dim=128, input_size=(1,128,128), out_size=2 ):
 
         super(Discriminator, self).__init__()
 
         self.latent_dim = laten_dim
         self.input_size = input_size
-        self.feature_size = feature_size
         self.out_size = out_size
 
         self.label_embedding = nn.Embedding(self.out_size, self.out_size)
@@ -78,4 +77,4 @@ class Discriminator(nn.Module):
         validity = self.model(d_in)
         return validity
 
-
+class 
