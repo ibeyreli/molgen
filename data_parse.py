@@ -13,9 +13,6 @@ import pandas as pd
 import networkx as nx
 import pysmiles as ps
 
-<<<<<<< HEAD
-RAW_FILE_DIF = "D:\\BILKENT_CS\\CS585\\"
-=======
 import logging
 logging.getLogger('pysmiles').setLevel(logging.CRITICAL) 
 
@@ -33,9 +30,8 @@ def molecule_counter(s, d=None, e=False):
         r = re.split(r'(\d+)|(?=[A-Z])', s)
     except TypeError:
         # print("Problematic string!", s)
-        e = True 
+        e = True
         return d, e
->>>>>>> cd58f8618df9b95ef521c01ff473b070c18e2c91
 
     for i in range(len(r)):
         if r[i] is None or r[i] == '': continue
@@ -54,7 +50,7 @@ def molecule_counter(s, d=None, e=False):
                 d[r[i]] = c
 
     return d, e
-     
+
 
 raw_file = pd.read_csv(os.path.join(RAW_FILE_DIF,"data.csv"), sep=";")
 # Example Reading:
@@ -73,14 +69,9 @@ target = raw_file.values[:,-1]
 
 counts = dict()
 
-for molecule in input:
-    counts = molecule_counter(molecule, counts)
+#for molecule in input:
+#    counts, _  = molecule_counter(molecule, counts)
 
-with open("counts.pkl", "wb") as fout:
-    pickle. dump(counts, fout)
-
-#counts = pickle.load("counts.pkl")
-=======
 l = [] # the list for ok molecules
 """
 for (i,molecule) in enumerate(input):
@@ -99,7 +90,6 @@ with open("counts.json", "r") as fin:
     counts = json.load(fin)
 with open("indices.json", "r") as fin:
     l = json.load(fin)
->>>>>>> cd58f8618df9b95ef521c01ff473b070c18e2c91
 
 # print("Data set of ", len(l), "molecules")
 # print("Dictionary", counts)
@@ -113,8 +103,10 @@ target = target[l]
 fout = open("data_parse_log.txt", "w")
 
 n = sum(counts.values())
-features = np.zeros((target.shape[0], len(counts.keys())))
+set_size = 30000
+features = np.zeros((set_size, len(counts.keys()) )).astype(dtype=np.uint8)
 
+#data = np.zeros((set_size, n, n), dtype=np.bool_)
 badlines = []
 k = 0
 for (i, smiles) in enumerate(target):
@@ -122,15 +114,14 @@ for (i, smiles) in enumerate(target):
         molecule = ps.read_smiles(smiles, explicit_hydrogen=True)
     except:
         fout.write("Error at line: %d \n" % i)
-        # data.append(np.zeros((n, n)))
         badlines.append(i)
-        l.pop(i)
+#        l.pop(i)
         continue
-    A = nx.adjacency_matrix(molecule).todense().astype(np.uint8)
+    A = nx.adjacency_matrix(molecule).todense().astype(np.bool_)
     #print("A and Nodes \n", A, molecule.nodes(data='element'))
     atoms, _ = molecule_counter(input[i])
     # get a new matrix to fill
-    Aprime = np.zeros((n, n), dtype=np.uint8)    
+    Aprime = np.zeros((n, n), dtype=np.bool_)    
     for key in atoms.keys():
         j = list(counts.keys()).index(key)
         # set the feature
@@ -143,17 +134,18 @@ for (i, smiles) in enumerate(target):
         # print(len(nodes))
         Aprime[nodes2, nodes2] = A[nodes,nodes].copy()
     np.save(os.path.join(RAW_FILE_DIF,"adjacency_"+str(k)+".npy"), Aprime)
+#    data[i, : ,: ] = Aprime.copy()
     k += 1
     if i % 1000 == 0: print("At line:", i)
+    if i == set_size-1: break
+
+print("Total samples:", k)
 
 # Not used due to memory issues!
-# data = np.delete(np.array(data), badlines, axis=0)
-# np.save(os.path.join(RAW_FILE_DIF,"data.npy"), data, allow_pickle=True)
+#data = np.delete(np.array(data), badlines, axis=0)
+#np.save(os.path.join(RAW_FILE_DIF,"data.npy"), data, allow_pickle=True)
 
-features = np.delete(np.array(features), badlines, axis=0)
+features = np.delete(features, badlines, axis=0)
 np.save(os.path.join(RAW_FILE_DIF,"features.npy"), features, allow_pickle=True)
 
-print("Final shape", data.shape, features.shape)
-
-with open("indices.json", "w") as fout:
-    json.dump(l, fout)
+print("Final shape", features.shape)

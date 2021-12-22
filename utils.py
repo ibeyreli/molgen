@@ -4,7 +4,7 @@ Utiliy Functions for Deep Molecule Generator
 author: ilayda beyreli kokundu
 date 03/11/2021
 """
-import os
+import os, json
 import math
 
 import pdb
@@ -28,15 +28,15 @@ import logging
 logging.getLogger('pysmiles').setLevel(logging.CRITICAL)  # Anything higher than warning
 
 
-def sample_molecule(n_row, batches_done):
-    """Saves a grid of generated molecules"""
-    # Sample noise
-    z = Variable(FloatTensor(np.random.normal(0, 1, (n_row ** 2, latent_dim))))
-    # Get labels ranging from 0 to n_classes for n rows
-    labels = np.array([num for _ in range(n_row) for num in range(n_row)])
-    labels = Variable(LongTensor(labels))
-    gen_imgs = generator(z, labels
-    save_sample(gen_imgs.data, "molecules/%d.png" % batches_done, nrow=n_row, normalize=True)
+#def sample_molecule(n_row, batches_done):
+#    """Saves a grid of generated molecules"""
+#   # Sample noise
+#    z = Variable(FloatTensor(np.random.normal(0, 1, (n_row ** 2, latent_dim))))
+#    # Get labels ranging from 0 to n_classes for n rows
+#    labels = np.array([num for _ in range(n_row) for num in range(n_row)])
+#    labels = Variable(LongTensor(labels))
+#    gen_imgs = generator(z, labels
+#    save_sample(gen_imgs.data, "molecules/%d.png" % batches_done, nrow=n_row, normalize=True)
 
 def plot_learing_curve(tgl, tdl, vgl, vdl):
     fig, ax = plt.subplots(figsize=(16, 20))
@@ -44,7 +44,7 @@ def plot_learing_curve(tgl, tdl, vgl, vdl):
     ax.plot(tgl,  color='green', label='Train Generator')
     ax.plot(tgd,  color='red', label='Train Discriminator')
     ax.plot(vgl,  color='blue', label='Validation Generator')
-    ax.plot(vgd,  color='orange'", label='Validation Discriminator')
+    ax.plot(vgd,  color='orange', label='Validation Discriminator')
     
     ax.set_title("Learning Curve")
     ax.set_xlabel("Epoch")
@@ -54,12 +54,13 @@ def plot_learing_curve(tgl, tdl, vgl, vdl):
     fig.savefig("between_scaled.png")
 
 def generate_reference(file_name="counts.json"):
+    counts = dict()
     with open(file_name, "r") as fin:
         counts = json.load(fin)
     n = sum(counts.values())
     ref_vec = np.zeros((n,1))# .fill(0)
     i = 0
-    for key in count.keys():
+    for key in counts.keys():
         if key == 'C':
             ref_vec[i:counts[key]] = 0.25
         if key == 'H':
@@ -78,3 +79,11 @@ def symmetry_loss(output): # custom loss function
 def bond_loss(output, ref_vector):
     loss = torch.sum( torch.mul( torch.sum(output, 1), ref_vector) )
     return loss
+
+def load_molecules(molecules):
+    DATA_FILE = "/mnt/ilayda/molgen_data"
+    dataset = []
+    for file in sorted(molecules):
+        dataset.append( np.load( os.path.join(DATA_FILE,file) ) )
+    dataset = np.asarray(dataset)
+    return dataset

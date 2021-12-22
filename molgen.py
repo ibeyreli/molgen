@@ -11,14 +11,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torch.utils.data import DataLoader
-from torchvision import datasets
 from torch.autograd import Variable
 
 class Generator(nn.Module):
     def __init__(self, latent_dim=128, input_size=(1,128,128), feature_size=100, out_size=2 ):
         super(Generator, self).__init__()
 
-        self.latent_dim = laten_dim
+        self.latent_dim = latent_dim
         self.input_size = input_size
         self.feature_size = feature_size
         self.out_size = out_size
@@ -53,14 +52,14 @@ class Discriminator(nn.Module):
 
         super(Discriminator, self).__init__()
 
-        self.latent_dim = laten_dim
+        self.latent_dim = latent_dim
         self.input_size = input_size
         self.out_size = out_size
 
         self.label_embedding = nn.Embedding(self.out_size, self.out_size)
 
         self.model = nn.Sequential(
-            nn.Linear(sef.out_size + int(np.prod(self.input_size)), 512),
+            nn.Linear(self.out_size + int(np.prod(self.input_size)), 512),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(512, 512),
             nn.Dropout(0.4),
@@ -77,4 +76,4 @@ class Discriminator(nn.Module):
         validity = self.model(d_in)
         return validity
 
-class 
+
