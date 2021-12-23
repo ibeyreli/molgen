@@ -31,11 +31,11 @@ from utils import *
 from molgen import *
 
 DATA_FILE = "/mnt/ilayda/molgen_data"
-system_gpu_mask = "0"
-batch_size = 32
+system_gpu_mask = ""
+batch_size = 8
 max_epoch = 1000
 l_rate = 1e-4
-latent_dim = 128
+latent_dim = 64
 
 # Seeds
 torch.manual_seed(42)
@@ -91,7 +91,7 @@ features = np.load("/mnt/ilayda/molgen_data/features.npy")
 dataset = np.array(sorted(files))
 
 print("Dataset of shape:", dataset.shape, " Feature of shape:", features.shape)
-features = features[:dataset.shape[0],:]
+features = features[:dataset.shape[0],:5]
 
 x_train, x_test, f_train, f_test = train_test_split(dataset, features, train_size=8/10, shuffle=True)
 
@@ -102,7 +102,11 @@ train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
 ref_vec = generate_reference()
+ref_vec = torch.from_numpy(ref_vec[::9]).double().to(device)
 f_size = features.shape[1]
+
+sample = load_molecule(dataset[0])
+print("Sample shape:",sample.shape)
 # -----------------------------------------------
 # Model Setup
 # -----------------------------------------------
@@ -110,16 +114,17 @@ def freeze_layer(layer):
     for param in layer.parameters():
         param.requires_grad = False
 
+print("Model init...")
 generator = Generator().to(device)
+print("Generator initialized.")
 discriminator = Discriminator().to(device)
+print("Discriminator initialized.")
 
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=l_rate)
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=l_rate)
 
-#FloatTensor = torch.cuda.FloatTensor if torch.cuda.is_avaliable() else torch.FloatTensor
-#LongTensor = torch.cuda.LongTensor if torch.cuda.is_avaliable() else torch.LongTensor
-
+print("Training...")
 # -----------------------------------------------
 # Training
 # -----------------------------------------------
@@ -147,8 +152,8 @@ for epoch in range(max_epoch):
         fake = Variable(FloatTensor(batch_size, 1).fill_(0.0), requires_grad=False)
 
         # Configure input
-        real_molecules = Variable(molecules.type(FloatTensor))
-        #feats = Variable(labels.type(LongTensor))
+        real_imgs = Variable(molecules.type(FloatTensor))
+        feats = Variable(feats.type(LongTensor))
 
         # -----------------
         #  Train Generator
@@ -165,15 +170,20 @@ for epoch in range(max_epoch):
 
         # Loss measures generator's ability to fool the discriminator
         validity = discriminator(gen_imgs, gen_labels)
-        g_loss = F.MSEloss(validity, valid)
+        g_loss = F.mse_loss(validity, valid)
         
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TO DO:
         # Check if the martix is symmetric A-A^t
         # Then get row sum, and multiply with ref vector
-        
-        
+        # Loss measures generator's ability to generate meaningful molecules
+        sym_loss = symmetry_loss(gen_imgs).to(device)
+        b_loss = bond_loss(gen_imgs.double(), ref_vec).to(device)
+        print(g_loss.dtype, b_loss.dtype, sym_loss.dtype)
+
         batch_g_loss.append(g_loss.item())
-        g_loss.backward()
+
+        g_loss = g_loss + sym_loss + b_loss
+        g_loss.mean().backward()
         optimizer_G.step()
 
         # ---------------------
@@ -183,12 +193,12 @@ for epoch in range(max_epoch):
         optimizer_D.zero_grad()
 
         # Loss for real images
-        validity_real = discriminator(real_imgs, labels)
-        d_real_loss = F.MSEloss(validity_real, valid)
+        validity_real = discriminator(real_imgs, feats)
+        d_real_loss = F.mse_loss(validity_real, valid)
 
         # Loss for fake images
         validity_fake = discriminator(gen_imgs.detach(), gen_labels)
-        d_fake_loss = F.MSEloss(validity_fake, fake)
+        d_fake_loss = F.mse_loss(validity_fake, fake)
 
         # Total discriminator loss
         d_loss = (d_real_loss + d_fake_loss) / 2
@@ -225,7 +235,7 @@ for epoch in range(max_epoch):
 
             # Configure input
             real_molecules = Variable(molecules.type(FloatTensor))
-            #feats = Variable(labels.type(LongTensor))
+            feats = Variable(feats.type(LongTensor))
 
             # -----------------
             #  Generator
@@ -244,7 +254,7 @@ for epoch in range(max_epoch):
             
             # Loss measures generator's ability to fool the discriminator
             validity = discriminator(gen_imgs, gen_labels)
-            g_loss = F.MSEloss(validity, valid)
+            g_loss = F.mse_loss(validity, valid)
             g_losses.append(g_loss.item())
 
             # ---------------------
@@ -252,12 +262,12 @@ for epoch in range(max_epoch):
             # ---------------------
 
             # Loss for real images
-            validity_real = discriminator(real_imgs, labels)
-            d_real_loss = F.MSEloss(validity_real, valid)
+            validity_real = discriminator(real_imgs, feats)
+            d_real_loss = F.mse_loss(validity_real, valid)
 
             # Loss for fake images
             validity_fake = discriminator(gen_imgs.detach(), gen_labels)
-            d_fake_loss = F.MSEloss(validity_fake, fake)
+            d_fake_loss = F.mse_loss(validity_fake, fake)
 
             # Total discriminator loss
             d_loss = (d_real_loss + d_fake_loss) / 2

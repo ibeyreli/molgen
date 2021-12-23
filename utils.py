@@ -74,16 +74,23 @@ def generate_reference(file_name="counts.json"):
 
 def symmetry_loss(output): # custom loss function
     loss = output - torch.transpose(output, 0, 1) #beware of dim0 and dim1
-    return loss
+    return loss.float() #torch.tensor(loss, dtype=torch.float)
+
     
 def bond_loss(output, ref_vector):
     loss = torch.sum( torch.mul( torch.sum(output, 1), ref_vector) )
-    return loss
+    return loss.float() #torch.tensor(loss, dtype=torch.long)
 
 def load_molecules(molecules):
     DATA_FILE = "/mnt/ilayda/molgen_data"
     dataset = []
     for file in sorted(molecules):
-        dataset.append( np.load( os.path.join(DATA_FILE,file) ) )
+        #temp =  np.moveaxis(np.load( os.path.join(DATA_FILE,file) ), [0,1,2], [2,1,0])
+        dataset.append( np.moveaxis(np.load( os.path.join(DATA_FILE,file) )[::9,::9].reshape((674,674,1)), [0,1,2], [2,1,0]) )
     dataset = np.asarray(dataset)
     return dataset
+
+def load_molecule(molecule):
+    DATA_FILE = "/mnt/ilayda/molgen_data"
+    return np.moveaxis(np.load( os.path.join(DATA_FILE,molecule) )[::9,::9].reshape((674,674,1)), [0,1,2], [2,1,0])
+
