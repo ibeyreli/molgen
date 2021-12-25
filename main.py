@@ -31,8 +31,8 @@ from utils import *
 from molgen import *
 
 DATA_FILE = "/mnt/ilayda/molgen_data"
-system_gpu_mask = ""
-batch_size = 8
+system_gpu_mask = "1"
+batch_size = 32
 max_epoch = 1000
 l_rate = 1e-4
 latent_dim = 64
@@ -119,7 +119,7 @@ generator = Generator().to(device)
 print("Generator initialized.")
 discriminator = Discriminator().to(device)
 print("Discriminator initialized.")
-
+# print(discriminator)
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=l_rate)
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=l_rate)
@@ -163,27 +163,27 @@ for epoch in range(max_epoch):
 
         # Sample noise and labels as generator input
         z = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, latent_dim))))
-        gen_labels = Variable(LongTensor(np.random.randint(0, features.shape[1], batch_size)))
-
+        gen_feats = Variable(FloatTensor(np.random.randint(0, 160, size=(batch_size, feats.size(1) ) ) ) )
+        
         # Generate a batch of images
-        gen_imgs = generator(z, gen_labels)
-
+        gen_imgs = generator(z,gen_feats)
+        
         # Loss measures generator's ability to fool the discriminator
-        validity = discriminator(gen_imgs, gen_labels)
+        validity = discriminator(gen_imgs)
         g_loss = F.mse_loss(validity, valid)
         
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TO DO:
         # Check if the martix is symmetric A-A^t
         # Then get row sum, and multiply with ref vector
         # Loss measures generator's ability to generate meaningful molecules
-        sym_loss = symmetry_loss(gen_imgs).to(device)
-        b_loss = bond_loss(gen_imgs.double(), ref_vec).to(device)
-        print(g_loss.dtype, b_loss.dtype, sym_loss.dtype)
+        sym_loss = torch.abs(symmetry_loss(gen_imgs)).to(device)
+        b_loss = torch.abs(bond_loss(gen_imgs.double(), ref_vec)).to(device)
+        # print(g_loss.dtype, b_loss.dtype, sym_loss.dtype)
 
         batch_g_loss.append(g_loss.item())
 
         g_loss = g_loss + sym_loss + b_loss
-        g_loss.mean().backward()
+        g_loss.sum().backward()
         optimizer_G.step()
 
         # ---------------------
@@ -193,11 +193,11 @@ for epoch in range(max_epoch):
         optimizer_D.zero_grad()
 
         # Loss for real images
-        validity_real = discriminator(real_imgs, feats)
+        validity_real = discriminator(real_imgs)
         d_real_loss = F.mse_loss(validity_real, valid)
 
         # Loss for fake images
-        validity_fake = discriminator(gen_imgs.detach(), gen_labels)
+        validity_fake = discriminator(gen_imgs.detach())
         d_fake_loss = F.mse_loss(validity_fake, fake)
 
         # Total discriminator loss
@@ -208,8 +208,9 @@ for epoch in range(max_epoch):
 
 
         print(
-            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-            % (epoch, max_epoch, i, len(dataloader), d_loss.item(), g_loss.item())
+            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [S loss: %f] [B loss: %f]"
+            % (epoch, max_epoch, batch_idx, len(train_loader), d_loss.item(),
+               g_loss.sum().item(), sym_loss.mean().item(), b_loss.mean().item() )
         )
     train_d_loss.append(np.mean(batch_d_loss))
     train_g_loss.append(np.mean(batch_g_loss))
@@ -243,10 +244,10 @@ for epoch in range(max_epoch):
 
             # Sample noise and labels as generator input
             z = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, latent_dim))))
-            gen_labels = Variable(LongTensor(np.random.randint(0, f_size, batch_size)))
+            gen_feats = Variable(FloatTensor(np.random.randint(0, 160, size=(batch_size, feats.size(1) ) ) ) )
 
             # Generate a batch of images
-            gen_imgs = generator(z, gen_labels)
+            gen_imgs = generator(z, gen_feats)
             
             # Loss measures generator's ability to generate meaningful molecules
             sym_loss = symmetry_loss(gen_imgs)
