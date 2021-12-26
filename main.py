@@ -33,10 +33,10 @@ from molgen import *
 DATA_FILE = "/mnt/ilayda/molgen_data"
 system_gpu_mask = "1"
 batch_size = 32
-max_epoch = 1000
+max_epoch = 10
 l_rate = 1e-4
 latent_dim = 64
-
+debug = False
 # Seeds
 torch.manual_seed(42)
 np.random.seed(42)
@@ -98,8 +98,8 @@ x_train, x_test, f_train, f_test = train_test_split(dataset, features, train_siz
 train_set = Molecules(x_train, f_train)
 test_set = Molecules(x_test, f_test)
 
-train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
+train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last = True)
+test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, drop_last=True)
 
 ref_vec = generate_reference()
 ref_vec = torch.from_numpy(ref_vec[::9]).double().to(device)
@@ -128,8 +128,8 @@ print("Training...")
 # -----------------------------------------------
 # Training
 # -----------------------------------------------
-val_d_loss = []
-val_g_loss = []
+val_d_loss = [1000]
+val_g_loss = [1000]
 
 train_d_loss = []
 train_g_loss = []
@@ -182,7 +182,7 @@ for epoch in range(max_epoch):
 
         batch_g_loss.append(g_loss.item())
 
-        g_loss = g_loss + sym_loss + b_loss
+        g_loss = g_loss + sym_loss.mean() + b_loss.mean()
         g_loss.sum().backward()
         optimizer_G.step()
 
@@ -210,8 +210,10 @@ for epoch in range(max_epoch):
         print(
             "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [S loss: %f] [B loss: %f]"
             % (epoch, max_epoch, batch_idx, len(train_loader), d_loss.item(),
-               g_loss.sum().item(), sym_loss.mean().item(), b_loss.mean().item() )
+               g_loss.mean().item(), sym_loss.mean().item(), b_loss.mean().item() )
         )
+        if debug and batch_idx == 10: break
+
     train_d_loss.append(np.mean(batch_d_loss))
     train_g_loss.append(np.mean(batch_g_loss))
     #--------------------
@@ -250,12 +252,12 @@ for epoch in range(max_epoch):
             gen_imgs = generator(z, gen_feats)
             
             # Loss measures generator's ability to generate meaningful molecules
-            sym_loss = symmetry_loss(gen_imgs)
-            b_loss = bond_loss(gen_imgs, ref_vec)
+            sym_loss = torch.abs(symmetry_loss(gen_imgs)).to(device)
+            b_loss = torch.abs(bond_loss(gen_imgs.double(), ref_vec)).to(device)
             
             # Loss measures generator's ability to fool the discriminator
-            validity = discriminator(gen_imgs, gen_labels)
-            g_loss = F.mse_loss(validity, valid)
+            validity = discriminator(gen_imgs)
+            g_loss = F.mse_loss(validity, valid) + b_loss.mean() + sym_loss.mean()
             g_losses.append(g_loss.item())
 
             # ---------------------
@@ -263,16 +265,20 @@ for epoch in range(max_epoch):
             # ---------------------
 
             # Loss for real images
-            validity_real = discriminator(real_imgs, feats)
+            validity_real = discriminator(real_imgs)
             d_real_loss = F.mse_loss(validity_real, valid)
 
             # Loss for fake images
-            validity_fake = discriminator(gen_imgs.detach(), gen_labels)
+            validity_fake = discriminator(gen_imgs.detach())
             d_fake_loss = F.mse_loss(validity_fake, fake)
 
             # Total discriminator loss
             d_loss = (d_real_loss + d_fake_loss) / 2
+            d_losses.append(d_loss.item())
 
+            if debug and batch_idx == 10: break
+
+        # print(d_losses, g_losses)
         if np.mean(d_losses) > val_d_loss[-1] and d_early_stop != 0:
             d_early_stop -= 1
         elif d_early_stop != 0:
@@ -301,7 +307,7 @@ for epoch in range(max_epoch):
             generator.apply(freeze_layer)
             print("Generator Freezed!")
 
-        batches_done = epoch * len(dataloader) + i
+        batches_done = epoch * len(test_loader) + batch_idx
         if batches_done % 100 == 0:
            # sample_image(n_row=10, batches_done=batches_done)
            torch.save(generator.state_dict(), "generator_checkpoint"+str(batches_done)+".pth")

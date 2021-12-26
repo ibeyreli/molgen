@@ -39,12 +39,12 @@ logging.getLogger('pysmiles').setLevel(logging.CRITICAL)  # Anything higher than
 #    save_sample(gen_imgs.data, "molecules/%d.png" % batches_done, nrow=n_row, normalize=True)
 
 def plot_learing_curve(tgl, tdl, vgl, vdl):
-    fig, ax = plt.subplots(figsize=(16, 20))
+    fig, ax = plt.subplots(figsize=(20, 16))
     
     ax.plot(tgl,  color='green', label='Train Generator')
-    ax.plot(tgd,  color='red', label='Train Discriminator')
+    ax.plot(tdl,  color='red', label='Train Discriminator')
     ax.plot(vgl,  color='blue', label='Validation Generator')
-    ax.plot(vgd,  color='orange', label='Validation Discriminator')
+    ax.plot(vdl,  color='orange', label='Validation Discriminator')
     
     ax.set_title("Learning Curve")
     ax.set_xlabel("Epoch")

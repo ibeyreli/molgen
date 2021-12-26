@@ -1,0 +1,16 @@
+Train Losses: Generative 
+0.963679
+--------------------
+
+Train Losses: Discriminative 
+0.204211
+--------------------
+
+Validation Losses: Generative 
+1000.000000
+361.410007
+--------------------
+
+Validation Losses: Discriminative 
+1000.000000
+0.142704
